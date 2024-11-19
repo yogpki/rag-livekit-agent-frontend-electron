@@ -1,7 +1,7 @@
 
 # RAG LiveKit Agent Frontend (Electron)
 
-**⚠️ Work in Progress**
+**⚠️⚠️⚠️⚠️ Work in Progress ⚠️⚠️⚠️⚠️**
 
 ---
 
@@ -25,23 +25,13 @@
 
 
 ### Steps
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/rag-livekit-agent-frontend-electron.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd rag-livekit-agent-frontend-electron
-   ```
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-4. Run the application:
-   ```bash
-   npm start
-   ```
 
+```bash
+git clone https://github.com/your-username/rag-livekit-agent-frontend-electron.git
+cd rag-livekit-agent-frontend-electron
+npm install
+npm start
+```
 
 
 ## License
