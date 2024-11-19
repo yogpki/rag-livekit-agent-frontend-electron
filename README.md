@@ -1,13 +1,51 @@
-# rag-livekit-agent-frontend-electron
- rag-livekit-agent-frontend-electron
+
+# RAG LiveKit Agent Frontend (Electron)
+
+**⚠️ Work in Progress**
+
+---
+
+## Features
+
+### Completed
+- **LiveKit Voice Assistant Frontend**
+- **Electron Desktop Application**
+- **Language Input Switching**: Enables language switching by sending OSC to the local backend agent. ( [Custom livekit voice assistant agent backend](https://github.com/yogpki/rag-livekit-agent-backend) )
+
+### Upcoming
+- **Custom Control Bar**
+- **Message Display**
+
+---
+
+## Installation
+
+### Prerequisites
+- [Node.js](https://nodejs.org/) 
 
 
-> **⚠️ This project is a work in progress.**  
-> Done:
-> - livekit voice assistant agent frontend  
-> - electron desktop app instead of running in browser  
-> - language input switch by sending osc to local backend agent
-> Todo:
-> - Custom control bar
-> - Message display
+### Steps
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/rag-livekit-agent-frontend-electron.git
+   ```
+2. Navigate to the project directory:
+   ```bash
+   cd rag-livekit-agent-frontend-electron
+   ```
+3. Install dependencies:
+   ```bash
+   npm install
+   ```
+4. Run the application:
+   ```bash
+   npm start
+   ```
+
+
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
 ---
