@@ -7,10 +7,13 @@ import {
   VoiceAssistantControlBar,
   DisconnectButton,
 } from "@livekit/components-react";
-
+import { MicrophoneIcon } from "@heroicons/react/24/outline";
 //import { VoiceAssistantControlBar } from './components/VoiceAssistantControlBar';
 
 import { motion, AnimatePresence } from "framer-motion";
+
+// hook for getting audio track
+import { useLocalParticipant } from "@livekit/components-react";
 
 export default function VoiceAssistantApp() {
   const [connectionDetails, setConnectionDetails] = useState(null);
@@ -47,6 +50,23 @@ export default function VoiceAssistantApp() {
     console.log("Agent state updated:", agentState); // Debug info for agentState changes
   }, [agentState]);
 
+  // hold button
+  const [isPressed, setIsPressed] = useState(false); // 狀態: 是否按住
+
+  const handleHoldStart = (event) => {
+    event.preventDefault(); // 防止鼠标和触控事件冲突
+    setIsPressed(true);
+    console.log("Recording started...");
+    // Add logic to start recording or processing
+  };
+
+  const handleHoldEnd = (event) => {
+    event.preventDefault(); // 防止鼠标和触控事件冲突
+    setIsPressed(false);
+    console.log("Recording stopped...");
+    // Add logic to stop recording or processing
+  };
+
   
 
   return (
@@ -70,7 +90,27 @@ export default function VoiceAssistantApp() {
           agentState={agentState}
           
         />
-        {agentState !== "disconnected" && (
+         {/* Hold to Speak Button */}
+         {(agentState === "speaking" || agentState === "listening" || agentState === "thinking") && (
+          <div className="flex justify-center mt-4">
+          <button
+             className={`w-32 h-32 ${
+               isPressed ? "bg-red-500" : "bg-green-500"
+             } text-white rounded-full shadow-md flex items-center justify-center`}
+             onMouseDown={handleHoldStart}
+             onMouseUp={handleHoldEnd}
+             onMouseLeave={handleHoldEnd} // 確保鼠標離開時恢復
+             onTouchStart={handleHoldStart}
+             onTouchEnd={handleHoldEnd}
+             onTouchCancel={handleHoldEnd} // 如果触摸事件被取消
+           >
+             <MicrophoneIcon className="w-8 h-8" />
+           </button>
+         </div>
+        )}
+         
+
+         {(agentState === "speaking" || agentState === "listening" || agentState === "thinking") && (
           <LanguageButtons />
         )}
         <RoomAudioRenderer />
@@ -81,6 +121,9 @@ export default function VoiceAssistantApp() {
 
 function SimpleVoiceAssistant({ onStateChange }) {
   const { state, audioTrack } = useVoiceAssistant();
+
+
+  
 
   useEffect(() => {
     console.log("VoiceAssistant state updated:", state); // Debug info for voice assistant state
@@ -118,11 +161,25 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
     } catch (error) {
       console.error("Failed to send OSC message:", error);
     }
-
-
-
     
   };
+
+  // geting audio track from participant
+  const { microphoneTrack, localParticipant } = useLocalParticipant();
+  // 打印麦克风音轨信息
+  useEffect(() => {
+    if (microphoneTrack) {
+      console.log("Microphone track details:");
+      console.log("Is enabled:", microphoneTrack.isEnabled);
+      
+      console.log("Mic info:", localParticipant.audioLevel);
+    } else {
+      console.log("Microphone track is not available");
+    }
+  }, [microphoneTrack]);
+
+
+
   return (
     <div className="relative h-[100px]">
       <AnimatePresence>
