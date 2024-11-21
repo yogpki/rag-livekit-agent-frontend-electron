@@ -18,6 +18,9 @@ import { useLocalParticipant } from "@livekit/components-react";
 export default function VoiceAssistantApp() {
   const [connectionDetails, setConnectionDetails] = useState(null);
   const [agentState, setAgentState] = useState("disconnected");
+
+
+  
   
 
   
@@ -53,20 +56,7 @@ export default function VoiceAssistantApp() {
   // hold button
   const [isPressed, setIsPressed] = useState(false); // 狀態: 是否按住
 
-  const handleHoldStart = (event) => {
-    event.preventDefault(); // 防止鼠标和触控事件冲突
-    setIsPressed(true);
-    console.log("Recording started...");
-    // Add logic to start recording or processing
-  };
-
-  const handleHoldEnd = (event) => {
-    event.preventDefault(); // 防止鼠标和触控事件冲突
-    setIsPressed(false);
-    console.log("Recording stopped...");
-    // Add logic to stop recording or processing
-  };
-
+  
   
 
   return (
@@ -90,25 +80,14 @@ export default function VoiceAssistantApp() {
           agentState={agentState}
           
         />
-         {/* Hold to Speak Button */}
+         {/* 使用 HoldToSpeakButton */}
          {(agentState === "speaking" || agentState === "listening" || agentState === "thinking") && (
-          <div className="flex justify-center mt-4">
-          <button
-             className={`w-32 h-32 ${
-               isPressed ? "bg-red-500" : "bg-green-500"
-             } text-white rounded-full shadow-md flex items-center justify-center`}
-             onMouseDown={handleHoldStart}
-             onMouseUp={handleHoldEnd}
-             onMouseLeave={handleHoldEnd} // 確保鼠標離開時恢復
-             onTouchStart={handleHoldStart}
-             onTouchEnd={handleHoldEnd}
-             onTouchCancel={handleHoldEnd} // 如果触摸事件被取消
-           >
-             <MicrophoneIcon className="w-8 h-8" />
-           </button>
-         </div>
+          <HoldToSpeakButton
+            agentState={agentState}
+            isPressed={isPressed}
+            setIsPressed={setIsPressed}
+          />
         )}
-         
 
          {(agentState === "speaking" || agentState === "listening" || agentState === "thinking") && (
           <LanguageButtons />
@@ -122,14 +101,10 @@ export default function VoiceAssistantApp() {
 function SimpleVoiceAssistant({ onStateChange }) {
   const { state, audioTrack } = useVoiceAssistant();
 
-
-  
-
   useEffect(() => {
     console.log("VoiceAssistant state updated:", state); // Debug info for voice assistant state
     onStateChange(state);
   }, [state, onStateChange]);
-
   
 
   return (
@@ -150,7 +125,9 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
     console.log("Connect button in ControlBar clicked");
     await onConnectButtonClicked();
 
-    // 发送 OSC 消息
+   
+
+    // 发送 OSC 消息  // 初始狀態 cantonese， button released
     try {
       await window.osc.send("/start", 1);
       console.log("OSC message sent to /start");
@@ -161,22 +138,55 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
     } catch (error) {
       console.error("Failed to send OSC message:", error);
     }
+
+    try {
+      await window.osc.send("/release", 1);
+      console.log("OSC message sent to /release with value 1");
+    } catch (error) {
+      console.error("Failed to send OSC message to /release:", error);
+    }
+
+    // geting audio track from participant
+  //  const { microphoneTrack, localParticipant } = useLocalParticipant();
+
+  //    // 初始化时静音麦克风
+  //    if (microphoneTrack) {
+  //     microphoneTrack.mute();
+  //     console.log("Microphone muted on connect");
+  //   } else {
+  //     console.log("Microphone track not available at connect");
+  //   }
     
   };
 
-  // geting audio track from participant
-  const { microphoneTrack, localParticipant } = useLocalParticipant();
-  // 打印麦克风音轨信息
-  useEffect(() => {
-    if (microphoneTrack) {
-      console.log("Microphone track details:");
-      console.log("Is enabled:", microphoneTrack.isEnabled);
-      
-      console.log("Mic info:", localParticipant.audioLevel);
-    } else {
-      console.log("Microphone track is not available");
-    }
-  }, [microphoneTrack]);
+  // 
+
+  // useEffect(() => {
+  //   const handleKeyDown = (event) => {
+  //     if (!microphoneTrack) return; // 如果没有麦克风音轨，则跳过处理
+
+  //     if (event.key === 'a') {
+  //       // Mute microphone when 'a' is pressed
+  //       microphoneTrack.mute();
+  //       console.log("Microphone muted");
+  //     } else if (event.key === 's') {
+  //       // Unmute microphone when 's' is pressed
+  //       microphoneTrack.unmute();
+  //       console.log("Microphone unmuted");
+  //     }
+  //   };
+
+  //   // 监听键盘按下事件
+  //   window.addEventListener("keydown", handleKeyDown);
+
+  //   return () => {
+  //     // 清理事件监听器
+  //     window.removeEventListener("keydown", handleKeyDown);
+  //   };
+  // }, [microphoneTrack]);
+
+  
+  
 
 
 
@@ -214,6 +224,86 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
     </div>
   );
 }
+
+
+function HoldToSpeakButton({ agentState, isPressed, setIsPressed }) {
+
+  const { microphoneTrack } = useLocalParticipant();
+
+  const handleHoldStart = async (event) => {
+    event.preventDefault(); // 防止鼠标和触控事件冲突
+    setIsPressed(true);
+    console.log("Speak button is hold...");
+
+    if (microphoneTrack) {
+      // Unmute microphone
+      microphoneTrack.unmute();
+      console.log("Microphone unmuted");
+    }
+
+    // 发送 OSC 消息到 /hold，值为 1
+    try {
+      await window.osc.send("/hold", 1);
+      console.log("OSC message sent to /hold with value 1");
+    } catch (error) {
+      console.error("Failed to send OSC message to /hold:", error);
+    }
+
+   
+  };
+
+  const handleHoldEnd = async (event) => {
+    event.preventDefault(); // 防止鼠标和触控事件冲突
+    setIsPressed(false);
+    console.log("Speak button is released...");
+
+    if (microphoneTrack) {
+      // Mute microphone
+      microphoneTrack.mute();
+      console.log("Microphone muted");
+    }
+
+    //发送 OSC 消息到 /release，值为 1
+    try {
+      await window.osc.send("/release", 1);
+      console.log("OSC message sent to /release with value 1");
+    } catch (error) {
+      console.error("Failed to send OSC message to /release:", error);
+    }
+    // 延迟两秒后发送 OSC 消息到 /release，值为 1
+    // setTimeout(async () => {
+    //   try {
+    //     await window.osc.send("/release", 1);
+    //     console.log("OSC message sent to /release with value 1 after 2 seconds delay");
+    //   } catch (error) {
+    //     console.error("Failed to send OSC message to /release:", error);
+    //   }
+    // }, 2000); // 延迟 2000 毫秒 (2 秒)
+
+    
+  };
+
+  
+
+  return (
+    <div className="flex justify-center mt-4">
+      <button
+        className={`w-32 h-32 ${
+          isPressed ? "bg-red-500" : "bg-green-500"
+        } text-white rounded-full shadow-md flex items-center justify-center`}
+        onMouseDown={handleHoldStart}
+        onMouseUp={handleHoldEnd}
+        //onMouseLeave={handleHoldEnd} // 确保鼠标离开时恢复
+        onTouchStart={handleHoldStart}
+        onTouchEnd={handleHoldEnd}
+        onTouchCancel={handleHoldEnd} // 如果触摸事件被取消
+      >
+        <MicrophoneIcon className="w-8 h-8" />
+      </button>
+    </div>
+  );
+}
+
 
 function LanguageButtons({ agentState }) {
   const [selectedLanguage, setSelectedLanguage] = useState("Cantonese");
