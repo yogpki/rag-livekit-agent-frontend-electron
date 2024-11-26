@@ -19,8 +19,10 @@ export default function VoiceAssistantApp() {
   const [connectionDetails, setConnectionDetails] = useState(null);
   const [agentState, setAgentState] = useState("disconnected");
 
+  const [responseText, setResponseText] = useState("");
+  const [userInputText, setUserInputText] = useState("");
 
-  
+  const [isConversationStarted, setIsConversationStarted] = useState(false); // 是否已开始对话
   
 
   
@@ -31,6 +33,7 @@ export default function VoiceAssistantApp() {
       const details = await window.livekitAPI.getConnectionDetails();
       console.log("Connection details fetched:", details); // Debug info for connection details
       setConnectionDetails(details);
+      setIsConversationStarted(true); // 设置对话已开始
     } catch (error) {
       console.error("Failed to get connection details:", error);
     }
@@ -40,6 +43,7 @@ export default function VoiceAssistantApp() {
     console.log("Disconnected from LiveKit room"); // Debug info for disconnect
     setConnectionDetails(null);
     setAgentState("disconnected"); // Update agentState to disconnected on disconnect
+    setIsConversationStarted(false); // 重置对话状态
   };
 
   const onDeviceFailure = (error) => {
@@ -56,7 +60,20 @@ export default function VoiceAssistantApp() {
   // hold button
   const [isPressed, setIsPressed] = useState(false); // 狀態: 是否按住
 
-  
+  useEffect(() => {
+    // 收到 "/input" 消息时处理逻辑
+    window.osc.onUpdateUserInputText((data) => {
+      console.log("OSC Input received:", data);
+      setUserInputText("You: \n" + data); // 设置用户输入，并触发逐字显示逻辑
+      setResponseText(""); // 清空响应
+    });
+
+    // 收到 "/response" 消息时处理逻辑
+    window.osc.onUpdateResponseText((response) => {
+      console.log("OSC Response received:", response);
+      setResponseText("Friska: \n" + response); // 设置响应，并触发逐字显示逻辑
+    });
+  }, []);
   
 
   return (
@@ -74,6 +91,11 @@ export default function VoiceAssistantApp() {
         onMediaDeviceFailure={onDeviceFailure}
         className="grid grid-rows-[2fr_1fr] items-center"
       >
+        {/* 使用 ResponseAndInputBox 组件 */}
+        <ResponseAndInputBox
+          responseText={responseText}
+          userInputText={userInputText}
+        />
         <SimpleVoiceAssistant onStateChange={setAgentState} />
         <ControlBar
           onConnectButtonClicked={onConnectButtonClicked}
@@ -97,6 +119,78 @@ export default function VoiceAssistantApp() {
     </main>
   );
 }
+
+
+// ResponseAndInputBox 组件
+function ResponseAndInputBox({ responseText, userInputText }) {
+  const [typedUserInput, setTypedUserInput] = useState(""); // 动态展示用户输入
+  const [typedResponse, setTypedResponse] = useState(""); // 动态展示响应
+
+  // Helper function to split中英混合的文本
+  const splitText = (text) => {
+    // 使用正则表达式将中英文字符分开
+    return text.match(/[\u4e00-\u9fa5]|[^\u4e00-\u9fa5\s]+|\s+/g) || [];
+  };
+
+  useEffect(() => {
+    let userInputTimeouts = [];
+
+    if (userInputText) {
+      setTypedUserInput(""); // 清空用户输入
+      const words = splitText(userInputText); // 将中英混合文本拆分
+      userInputTimeouts = words.map((word, index) => {
+        const delay = index * 100; // 每个字符 0.1 秒延迟
+        return setTimeout(() => {
+          setTypedUserInput((prev) => prev + word);
+        }, delay);
+      });
+    }
+
+    return () => {
+      userInputTimeouts.forEach(clearTimeout); // 清理超时
+    };
+  }, [userInputText]); // 每次用户输入变化时重新运行
+
+  useEffect(() => {
+    let responseTimeouts = [];
+
+    if (responseText) {
+      setTypedResponse(""); // 清空响应
+      const words = splitText(responseText); // 将中英混合文本拆分
+      responseTimeouts = words.map((word, index) => {
+        const delay = index * 100; // 每个字符 0.1 秒延迟
+        return setTimeout(() => {
+          setTypedResponse((prev) => prev + word);
+        }, delay);
+      });
+    }
+
+    return () => {
+      responseTimeouts.forEach(clearTimeout); // 清理超时
+    };
+  }, [responseText]); // 每次响应文本变化时重新运行
+
+  return (
+    <div className="w-[60vw] mx-auto mb-4">
+      <div
+        className="w-full text-white text-sm p-2 overflow-auto"
+        style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}
+        dangerouslySetInnerHTML={{
+          __html: typedUserInput.replace(/^You:/, "<strong>You:</strong>"),
+        }}
+      ></div>
+      <div
+        className="w-full text-white text-sm p-2 overflow-auto mt-2"
+        style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}
+        dangerouslySetInnerHTML={{
+          __html: typedResponse.replace(/^Friska:/, "<strong>Friska:</strong>"),
+        }}
+      ></div>
+    </div>
+  );
+}
+
+
 
 function SimpleVoiceAssistant({ onStateChange }) {
   const { state, audioTrack } = useVoiceAssistant();

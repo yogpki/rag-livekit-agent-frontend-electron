@@ -5,7 +5,7 @@ import { AccessToken } from "livekit-server-sdk";
 import "dotenv/config"; // 加载 .env 文件
 
 import { Client } from "node-osc"; // 引入 node-osc 客户端
-
+import { Server } from "node-osc";
 // 用于模拟 __dirname 和 __filename
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,6 +14,37 @@ const __dirname = path.dirname(__filename);
 
 
 let mainWindow;
+
+// 初始化 OSC 服务端
+function setupOSCServer() {
+  const oscServer = new Server(5567, "127.0.0.1", () => {
+    console.log("OSC Server is listening on port 5567");
+  });
+
+  // 监听 "/response" 地址的消息
+  oscServer.on("message", (msg) => {
+    const [address, ...args] = msg;
+    console.log(`OSC Message Received: ${address} - ${args}`);
+
+    if (address === "/response" && args.length > 0) {
+      const response = args.join(" ");
+      // 向渲染进程发送 response 数据
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send("update-response-text", response);
+      }
+    }
+    if (address === "/input" && args.length > 0) {
+      const input = args.join(" ");
+      // 向渲染进程发送 userInputText 数据
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send("update-user-input-text", input);
+      }
+    }
+    
+  });
+}
+
+
 let oscClient;
 // 初始化 OSC 客户端
 function setupOSC() {
@@ -40,6 +71,7 @@ app.on("ready", () => {
 
   // 初始化 OSC 客户端
   setupOSC();
+  setupOSCServer(); // 初始化 OSC 服务端
   // 禁用菜单
   //Menu.setApplicationMenu(null);
 
