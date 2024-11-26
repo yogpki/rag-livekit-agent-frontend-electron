@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 // hook for getting audio track
 import { useLocalParticipant } from "@livekit/components-react";
 
+
 export default function VoiceAssistantApp() {
   const [connectionDetails, setConnectionDetails] = useState(null);
   const [agentState, setAgentState] = useState("disconnected");
@@ -22,7 +23,9 @@ export default function VoiceAssistantApp() {
   const [responseText, setResponseText] = useState("");
   const [userInputText, setUserInputText] = useState("");
 
-  const [isConversationStarted, setIsConversationStarted] = useState(false); // 是否已开始对话
+  const [showVisualizer, setShowVisualizer] = useState(false); // 控制 BarVisualizer 显示
+  const [isButtonDisabled, setIsButtonDisabled] = useState(false); // 控制 HoldButton 禁用状态
+
   
 
   
@@ -33,7 +36,6 @@ export default function VoiceAssistantApp() {
       const details = await window.livekitAPI.getConnectionDetails();
       console.log("Connection details fetched:", details); // Debug info for connection details
       setConnectionDetails(details);
-      setIsConversationStarted(true); // 设置对话已开始
     } catch (error) {
       console.error("Failed to get connection details:", error);
     }
@@ -43,7 +45,6 @@ export default function VoiceAssistantApp() {
     console.log("Disconnected from LiveKit room"); // Debug info for disconnect
     setConnectionDetails(null);
     setAgentState("disconnected"); // Update agentState to disconnected on disconnect
-    setIsConversationStarted(false); // 重置对话状态
   };
 
   const onDeviceFailure = (error) => {
@@ -55,10 +56,15 @@ export default function VoiceAssistantApp() {
 
   useEffect(() => {
     console.log("Agent state updated:", agentState); // Debug info for agentState changes
+    // 如果在 listening 状态，启用按钮并隐藏 BarVisualizer
+    if (agentState === "listening") {
+      setShowVisualizer(false);
+      setIsButtonDisabled(false);
+    }
+
   }, [agentState]);
 
-  // hold button
-  const [isPressed, setIsPressed] = useState(false); // 狀態: 是否按住
+  
 
   useEffect(() => {
     // 收到 "/input" 消息时处理逻辑
@@ -66,6 +72,10 @@ export default function VoiceAssistantApp() {
       console.log("OSC Input received:", data);
       setUserInputText("You: \n" + data); // 设置用户输入，并触发逐字显示逻辑
       setResponseText(""); // 清空响应
+
+      // 收到 "/input" 时，显示 BarVisualizer 并禁用按钮
+      setShowVisualizer(true);
+      setIsButtonDisabled(true);
     });
 
     // 收到 "/response" 消息时处理逻辑
@@ -96,20 +106,15 @@ export default function VoiceAssistantApp() {
           responseText={responseText}
           userInputText={userInputText}
         />
-        <SimpleVoiceAssistant onStateChange={setAgentState} />
+        <SimpleVoiceAssistant agentState={agentState} onStateChange={setAgentState} />
+
+
         <ControlBar
           onConnectButtonClicked={onConnectButtonClicked}
           agentState={agentState}
           
         />
-         {/* 使用 HoldToSpeakButton */}
-         {(agentState === "speaking" || agentState === "listening" || agentState === "thinking") && (
-          <HoldToSpeakButton
-            agentState={agentState}
-            isPressed={isPressed}
-            setIsPressed={setIsPressed}
-          />
-        )}
+         
 
          {(agentState === "speaking" || agentState === "listening" || agentState === "thinking") && (
           <LanguageButtons />
@@ -171,7 +176,7 @@ function ResponseAndInputBox({ responseText, userInputText }) {
   }, [responseText]); // 每次响应文本变化时重新运行
 
   return (
-    <div className="w-[60vw] mx-auto mb-4">
+    <div className="w-[60vw] mx-auto mb-2">
       <div
         className="w-full text-white text-sm p-2 overflow-auto"
         style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}
@@ -191,28 +196,87 @@ function ResponseAndInputBox({ responseText, userInputText }) {
 }
 
 
-
-function SimpleVoiceAssistant({ onStateChange }) {
+function SimpleVoiceAssistant({
+  onStateChange,
+  agentState,
+  showVisualizer,
+  isButtonDisabled,
+}) {
   const { state, audioTrack } = useVoiceAssistant();
+  const [isPressed, setIsPressed] = useState(false);
+  const { microphoneTrack } = useLocalParticipant();
 
   useEffect(() => {
-    console.log("VoiceAssistant state updated:", state); // Debug info for voice assistant state
+    console.log("VoiceAssistant state updated:", state);
     onStateChange(state);
   }, [state, onStateChange]);
-  
+
+  const handleHoldStart = async (event) => {
+    event.preventDefault();
+    setIsPressed(true);
+    if (microphoneTrack) {
+      microphoneTrack.unmute();
+    }
+    try {
+      await window.osc.send("/hold", 1);
+    } catch (error) {
+      console.error("Failed to send OSC message to /hold:", error);
+    }
+  };
+
+  const handleHoldEnd = async (event) => {
+    event.preventDefault();
+    setIsPressed(false);
+    if (microphoneTrack) {
+      microphoneTrack.mute();
+    }
+    try {
+      await window.osc.send("/release", 1);
+    } catch (error) {
+      console.error("Failed to send OSC message to /release:", error);
+    }
+  };
 
   return (
-    <div className="h-[300px] max-w-[90vw] mx-auto">
-      <BarVisualizer
-        state={state}
-        barCount={5}
-        trackRef={audioTrack}
-        className="agent-visualizer"
-        options={{ minHeight: 24 }}
-      />
+    <div className="relative w-full h-[300px] max-w-[90vw] mx-auto flex flex-col justify-center items-center">
+      <AnimatePresence>
+        {!showVisualizer && agentState === "listening" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <button
+              className={`w-32 h-32 ${
+                isPressed ? "bg-red-500" : "bg-green-500"
+              } text-white rounded-full shadow-md flex items-center justify-center`}
+              onMouseDown={handleHoldStart}
+              onMouseUp={handleHoldEnd}
+              onTouchStart={handleHoldStart}
+              onTouchEnd={handleHoldEnd}
+              disabled={isButtonDisabled}
+            >
+              <MicrophoneIcon className="w-8 h-8" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {showVisualizer && (
+        <BarVisualizer
+          state={state}
+          barCount={5}
+          trackRef={audioTrack}
+          className="agent-visualizer mb-4"
+          options={{ minHeight: 24 }}
+        />
+      )}
+
     </div>
   );
 }
+
 
 function ControlBar({ onConnectButtonClicked, agentState }) {
   const handleButtonClick = async () => {
@@ -240,49 +304,7 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
       console.error("Failed to send OSC message to /release:", error);
     }
 
-    // geting audio track from participant
-  //  const { microphoneTrack, localParticipant } = useLocalParticipant();
-
-  //    // 初始化时静音麦克风
-  //    if (microphoneTrack) {
-  //     microphoneTrack.mute();
-  //     console.log("Microphone muted on connect");
-  //   } else {
-  //     console.log("Microphone track not available at connect");
-  //   }
-    
   };
-
-  // 
-
-  // useEffect(() => {
-  //   const handleKeyDown = (event) => {
-  //     if (!microphoneTrack) return; // 如果没有麦克风音轨，则跳过处理
-
-  //     if (event.key === 'a') {
-  //       // Mute microphone when 'a' is pressed
-  //       microphoneTrack.mute();
-  //       console.log("Microphone muted");
-  //     } else if (event.key === 's') {
-  //       // Unmute microphone when 's' is pressed
-  //       microphoneTrack.unmute();
-  //       console.log("Microphone unmuted");
-  //     }
-  //   };
-
-  //   // 监听键盘按下事件
-  //   window.addEventListener("keydown", handleKeyDown);
-
-  //   return () => {
-  //     // 清理事件监听器
-  //     window.removeEventListener("keydown", handleKeyDown);
-  //   };
-  // }, [microphoneTrack]);
-
-  
-  
-
-
 
   return (
     <div className="relative h-[100px]">
@@ -319,84 +341,6 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
   );
 }
 
-
-function HoldToSpeakButton({ agentState, isPressed, setIsPressed }) {
-
-  const { microphoneTrack } = useLocalParticipant();
-
-  const handleHoldStart = async (event) => {
-    event.preventDefault(); // 防止鼠标和触控事件冲突
-    setIsPressed(true);
-    console.log("Speak button is hold...");
-
-    if (microphoneTrack) {
-      // Unmute microphone
-      microphoneTrack.unmute();
-      console.log("Microphone unmuted");
-    }
-
-    // 发送 OSC 消息到 /hold，值为 1
-    try {
-      await window.osc.send("/hold", 1);
-      console.log("OSC message sent to /hold with value 1");
-    } catch (error) {
-      console.error("Failed to send OSC message to /hold:", error);
-    }
-
-   
-  };
-
-  const handleHoldEnd = async (event) => {
-    event.preventDefault(); // 防止鼠标和触控事件冲突
-    setIsPressed(false);
-    console.log("Speak button is released...");
-
-    if (microphoneTrack) {
-      // Mute microphone
-      microphoneTrack.mute();
-      console.log("Microphone muted");
-    }
-
-    //发送 OSC 消息到 /release，值为 1
-    try {
-      await window.osc.send("/release", 1);
-      console.log("OSC message sent to /release with value 1");
-    } catch (error) {
-      console.error("Failed to send OSC message to /release:", error);
-    }
-    // 延迟两秒后发送 OSC 消息到 /release，值为 1
-    // setTimeout(async () => {
-    //   try {
-    //     await window.osc.send("/release", 1);
-    //     console.log("OSC message sent to /release with value 1 after 2 seconds delay");
-    //   } catch (error) {
-    //     console.error("Failed to send OSC message to /release:", error);
-    //   }
-    // }, 2000); // 延迟 2000 毫秒 (2 秒)
-
-    
-  };
-
-  
-
-  return (
-    <div className="flex justify-center mt-4">
-      <button
-        className={`w-32 h-32 ${
-          isPressed ? "bg-red-500" : "bg-green-500"
-        } text-white rounded-full shadow-md flex items-center justify-center`}
-        onMouseDown={handleHoldStart}
-        onMouseUp={handleHoldEnd}
-        //onMouseLeave={handleHoldEnd} // 确保鼠标离开时恢复
-        onTouchStart={handleHoldStart}
-        onTouchEnd={handleHoldEnd}
-        onTouchCancel={handleHoldEnd} // 如果触摸事件被取消
-      >
-        <MicrophoneIcon className="w-8 h-8" />
-      </button>
-    </div>
-  );
-}
 
 
 function LanguageButtons({ agentState }) {
