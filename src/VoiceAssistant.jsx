@@ -91,7 +91,7 @@ export default function VoiceAssistantApp() {
   return (
     <main
       data-lk-theme="default"
-      className="h-full grid content-center bg-[var(--lk-bg)]"
+      className="h-screen grid content-center bg-[var(--lk-bg)]"
     >
       <LiveKitRoom
         token={connectionDetails?.participantToken}
@@ -101,31 +101,31 @@ export default function VoiceAssistantApp() {
         video={false}
         onDisconnected={handleDisconnected}
         onMediaDeviceFailure={onDeviceFailure}
-        className="grid grid-rows-[2fr_1fr] items-center"
+        className="grid grid-rows-[33.3%_33.3%_33.3%] h-screen justify-items-center content-center"
       >
         {/* 使用 ResponseAndInputBox 组件 */}
+        <div className="h-full flex justify-center align-self-start">
         <ResponseAndInputBox
           responseText={responseText}
           userInputText={userInputText}
         />
+        </div>
+        <div className="h-full flex justify-center items-center">
         <SimpleVoiceAssistant
           agentState={agentState}
           onStateChange={setAgentState}
           showVisualizer={showVisualizer} // 传递 showVisualizer 状态
           isButtonDisabled={isButtonDisabled} // 传递 isButtonDisabled 状态
         />
-
-
+      </div>
+      <div className="h-1/3 flex justify-center items-center">
         <ControlBar
           onConnectButtonClicked={onConnectButtonClicked}
           agentState={agentState}
           
         />
-         
+      </div>
 
-         {(agentState === "speaking" || agentState === "listening" || agentState === "thinking") && (
-          <LanguageButtons />
-        )}
         <RoomAudioRenderer />
       </LiveKitRoom>
     </main>
@@ -187,8 +187,8 @@ function ResponseAndInputBox({ responseText, userInputText }) {
   }, [responseText]); // 每次 responseText 變化時重新運行
 
   return (
-    <div className="w-[60vw] mx-auto mb-2">
-      <div className="w-full text-white text-sm p-2 overflow-auto">
+    <div className="w-[60vw] h-full flex flex-col justify-start mt-10">
+      <div className="w-full text-white text-sm p-4 overflow-auto">
         {typedUserInput && (
           <>
             <strong>You:</strong>
@@ -201,7 +201,7 @@ function ResponseAndInputBox({ responseText, userInputText }) {
           </>
         )}
       </div>
-      <div className="w-full text-white text-sm p-2 overflow-auto mt-2">
+      <div className="w-full text-white text-sm p-4 overflow-auto mt-2">
         {typedResponse && (
           <>
             <strong>Friska:</strong>
@@ -218,7 +218,6 @@ function ResponseAndInputBox({ responseText, userInputText }) {
     </div>
   );
 }
-
 
 
 function SimpleVoiceAssistant({
@@ -263,7 +262,7 @@ function SimpleVoiceAssistant({
   };
 
   return (
-    <div className="relative w-full h-[300px] max-w-[90vw] mx-auto flex flex-col justify-center items-center">
+    <div className="relative w-full h-full flex flex-col justify-center items-center">
       <AnimatePresence>
         {!showVisualizer && agentState === "listening" && (
           <motion.div
@@ -293,14 +292,24 @@ function SimpleVoiceAssistant({
           state={state}
           barCount={5}
           trackRef={audioTrack}
-          className="agent-visualizer mb-4"
+          className="agent-visualizer"
           options={{ minHeight: 24 }}
         />
       )}
 
+      {/* Pass `isButtonDisabled` to LanguageButtons */}
+      <LanguageButtons 
+        agentState={agentState} 
+        isDisabled={agentState !== "listening"} 
+        show={agentState === "listening"} 
+      />
+
+
     </div>
   );
 }
+
+
 
 
 function ControlBar({ onConnectButtonClicked, agentState }) {
@@ -332,7 +341,7 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
   };
 
   return (
-    <div className="relative h-[100px]">
+    <div className="relative h-full flex justify-center items-center">
       <AnimatePresence>
         {agentState === "disconnected" && (
           <motion.button
@@ -340,7 +349,7 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, top: "-10px" }}
             transition={{ duration: 1, ease: [0.09, 1.04, 0.245, 1.055] }}
-            className="uppercase absolute left-1/2 -translate-x-1/2 px-4 py-2 bg-white text-black rounded-md"
+            className="uppercase px-4 py-2 bg-white text-black rounded-md"
             onClick={handleButtonClick}
           >
             Start a conversation
@@ -355,7 +364,7 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
             animate={{ opacity: 1, top: 0 }}
             exit={{ opacity: 0, top: "-10px" }}
             transition={{ duration: 0.4, ease: [0.09, 1.04, 0.245, 1.055] }}
-            className="flex h-8 absolute left-1/2 -translate-x-1/2 justify-center"
+            className="flex justify-center items-center"
           >
             <VoiceAssistantControlBar controls={{ leave: false }} />
             <DisconnectButton />
@@ -367,87 +376,116 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
 }
 
 
+function LanguageButtons({ agentState, isDisabled, show }) {
 
-function LanguageButtons({ agentState }) {
-  const [selectedLanguage, setSelectedLanguage] = useState("Cantonese");
+  const [selectedLanguage, setSelectedLanguage] = useState("Cantonese"); // 默認選中 Cantonese
 
   const handleButtonClick = async (language, oscAddress) => {
+    console.log(`handleButtonClick called for ${language}`); // 確保函數被調用
     if (selectedLanguage === language) {
-      // 如果已經被選中，不執行任何操作
-      return;
+      console.log(`${language} is already selected, skipping...`);
+      return; // 當前已選中按鈕，不做任何操作
     }
-    console.log(`${language} button clicked`);
-    setSelectedLanguage(language);
-
+  
+    console.log(`Switching to ${language} mode`);
+    setSelectedLanguage(language); // 更新選中的語言
+  
     // 發送 OSC 消息
     try {
-      await window.osc.send(oscAddress, 1);
+      await window.osc.send(oscAddress, 1); // 發送 OSC 消息
       console.log(`OSC message sent to ${oscAddress}`);
     } catch (error) {
       console.error(`Failed to send OSC message to ${oscAddress}:`, error);
     }
   };
+  
 
-  // 判斷按鈕是否禁用
-  const isDisabled = agentState === "speaking";
-
-  // 按鈕樣式
+  // 按鈕樣式判斷邏輯
   const getButtonStyles = (language) => {
     if (selectedLanguage === language) {
-      return "bg-blue-500 text-white"; // 選中按鈕樣式：藍色
+      return "bg-blue-500 text-white cursor-not-allowed"; // 當前選中按鈕：藍色，不可點擊
     }
-    if (isDisabled) {
-      return "bg-gray-500 text-gray-300 cursor-not-allowed"; // 禁用按鈕樣式：深灰色
-    }
-    return "bg-white text-black"; // 默認樣式：白色
+    return "bg-gray-200 text-black cursor-pointer"; // 非選中按鈕：灰色，可點擊
   };
 
-  if (agentState === "disconnected" || agentState === "initializing" ||  agentState === "connecting") {
-    return null; // 按鈕不顯示
-  }
+  // 按鈕禁用狀態判斷
+  const isButtonDisabled = (language) => {
+    // 如果程序禁用，或者當前按鈕已選中，則禁用按鈕
+    return isDisabled || selectedLanguage === language;
+  };
+
+  console.log("isDisabled from props:", isDisabled);
+console.log("selectedLanguage:", selectedLanguage);
+
+  console.log("Cantonese Disabled:", isButtonDisabled("Cantonese"));
+console.log("English Disabled:", isButtonDisabled("English"));
+console.log("Mandarin Disabled:", isButtonDisabled("Mandarin"));
 
   return (
-    <div className="flex justify-center items-center mt-4 space-x-4">
-      <button
-        className={`uppercase px-4 py-2 rounded-md text-xs ${getButtonStyles(
-          "Cantonese"
-        )}`}
-        style={{
-          fontSize: "0.75rem", // 字體大小為 0.75rem (text-xs 對應的大小)
-          lineHeight: "1.2", // 可選：行高
-        }}
-        onClick={() => handleButtonClick("Cantonese", "/can")}
-        disabled={isDisabled}
-      >
-        Cantonese
-      </button>
-      <button
-        className={`uppercase px-4 py-2 rounded-md text-xs ${getButtonStyles(
-          "English"
-        )}`}
-        style={{
-          fontSize: "0.75rem", // 字體大小為 0.75rem (text-xs 對應的大小)
-          lineHeight: "1.2", // 可選：行高
-        }}
-        onClick={() => handleButtonClick("English", "/en")}
-        disabled={isDisabled}
-      >
-        English
-      </button>
-      <button
-        className={`uppercase px-4 py-2 rounded-md text-xs ${getButtonStyles(
-          "Mandarin"
-        )}`}
-        style={{
-          fontSize: "0.75rem", // 字體大小為 0.75rem (text-xs 對應的大小)
-          lineHeight: "1.2", // 可選：行高
-        }}
-        onClick={() => handleButtonClick("Mandarin", "/mand")}
-        disabled={isDisabled}
-      >
-        Mandarin
-      </button>
-    </div>
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex justify-center items-center mt-10 space-x-4"
+        >
+          {/* Cantonese Button */}
+          <button
+            className={`uppercase px-4 py-2 rounded-md text-xs ${getButtonStyles(
+              "Cantonese"
+            )}`}
+            style={{
+              fontSize: "0.75rem", // 字體大小為 0.75rem
+              lineHeight: "1.2", // 行高
+            }}
+            onClick={() => {
+              console.log("Cantonese button clicked"); // 調試輸出
+              handleButtonClick("Cantonese", "/can");
+            }}
+            disabled={isButtonDisabled("Cantonese")} // 判斷是否禁用
+          >
+            Cantonese
+          </button>
+
+          {/* English Button */}
+          <button
+            className={`uppercase px-4 py-2 rounded-md text-xs ${getButtonStyles(
+              "English"
+            )}`}
+            style={{
+              fontSize: "0.75rem",
+              lineHeight: "1.2",
+            }}
+            onClick={() => {
+              console.log("English button clicked"); // 調試輸出
+              handleButtonClick("English", "/en");
+            }}
+            disabled={isButtonDisabled("English")} // 判斷是否禁用
+          >
+            English
+          </button>
+
+          {/* Mandarin Button */}
+          <button
+            className={`uppercase px-4 py-2 rounded-md text-xs ${getButtonStyles(
+              "Mandarin"
+            )}`}
+            style={{
+              fontSize: "0.75rem",
+              lineHeight: "1.2",
+            }}
+            onClick={() => {
+              console.log("Mandarin button clicked"); // 調試輸出
+              handleButtonClick("Mandarin", "/mand");
+            }}
+            disabled={isButtonDisabled("Mandarin")} // 判斷是否禁用
+          >
+            Mandarin
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
-
