@@ -116,7 +116,9 @@ async function generateConnectionDetails() {
       Math.random() * 10_000
     )}`;
   
-    const roomName = "voice_assistant_room";
+    const roomName = `voice_assistant_room_${Math.round(
+      Math.random() * 10_000
+    )}`;
   
      // 等待 createParticipantToken 函数返回结果
     const token = await createParticipantToken(

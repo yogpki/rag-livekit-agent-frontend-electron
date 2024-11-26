@@ -26,7 +26,9 @@ export default function VoiceAssistantApp() {
   const [showVisualizer, setShowVisualizer] = useState(false); // 控制 BarVisualizer 显示
   const [isButtonDisabled, setIsButtonDisabled] = useState(false); // 控制 HoldButton 禁用状态
 
-  
+  useEffect(() => {
+    console.log("responseText updated:", responseText);
+  }, [responseText]);
 
   
   // Fetch connection details from the main process
@@ -70,7 +72,7 @@ export default function VoiceAssistantApp() {
     // 收到 "/input" 消息时处理逻辑
     window.osc.onUpdateUserInputText((data) => {
       console.log("OSC Input received:", data);
-      setUserInputText("You: \n" + data); // 设置用户输入，并触发逐字显示逻辑
+      setUserInputText("\n" + data); // 设置用户输入，并触发逐字显示逻辑
       setResponseText(""); // 清空响应
 
       // 收到 "/input" 时，显示 BarVisualizer 并禁用按钮
@@ -81,7 +83,7 @@ export default function VoiceAssistantApp() {
     // 收到 "/response" 消息时处理逻辑
     window.osc.onUpdateResponseText((response) => {
       console.log("OSC Response received:", response);
-      setResponseText("Friska: \n" + response); // 设置响应，并触发逐字显示逻辑
+      setResponseText("\n" + response); // 设置响应，并触发逐字显示逻辑
     });
   }, []);
   
@@ -106,7 +108,12 @@ export default function VoiceAssistantApp() {
           responseText={responseText}
           userInputText={userInputText}
         />
-        <SimpleVoiceAssistant agentState={agentState} onStateChange={setAgentState} />
+        <SimpleVoiceAssistant
+          agentState={agentState}
+          onStateChange={setAgentState}
+          showVisualizer={showVisualizer} // 传递 showVisualizer 状态
+          isButtonDisabled={isButtonDisabled} // 传递 isButtonDisabled 状态
+        />
 
 
         <ControlBar
@@ -128,12 +135,12 @@ export default function VoiceAssistantApp() {
 
 // ResponseAndInputBox 组件
 function ResponseAndInputBox({ responseText, userInputText }) {
-  const [typedUserInput, setTypedUserInput] = useState(""); // 动态展示用户输入
-  const [typedResponse, setTypedResponse] = useState(""); // 动态展示响应
+  const [typedUserInput, setTypedUserInput] = useState(""); // 動態顯示用戶輸入
+  const [typedResponse, setTypedResponse] = useState(""); // 動態顯示響應
 
   // Helper function to split中英混合的文本
   const splitText = (text) => {
-    // 使用正则表达式将中英文字符分开
+    // 使用正則表達式將中英文字符分開
     return text.match(/[\u4e00-\u9fa5]|[^\u4e00-\u9fa5\s]+|\s+/g) || [];
   };
 
@@ -141,59 +148,77 @@ function ResponseAndInputBox({ responseText, userInputText }) {
     let userInputTimeouts = [];
 
     if (userInputText) {
-      setTypedUserInput(""); // 清空用户输入
-      const words = splitText(userInputText); // 将中英混合文本拆分
+      setTypedUserInput(""); // 清空用戶輸入
+      const words = splitText(userInputText); // 將中英混合文本拆分
       userInputTimeouts = words.map((word, index) => {
-        const delay = index * 100; // 每个字符 0.1 秒延迟
+        const delay = index * 100; // 每個字符 0.1 秒延遲
         return setTimeout(() => {
           setTypedUserInput((prev) => prev + word);
         }, delay);
       });
+    } else {
+      setTypedUserInput(""); // 確保重置為空字符串
     }
 
     return () => {
-      userInputTimeouts.forEach(clearTimeout); // 清理超时
+      userInputTimeouts.forEach(clearTimeout); // 清理超時
     };
-  }, [userInputText]); // 每次用户输入变化时重新运行
+  }, [userInputText]); // 每次 userInputText 變化時重新運行
 
   useEffect(() => {
     let responseTimeouts = [];
 
     if (responseText) {
-      setTypedResponse(""); // 清空响应
-      const words = splitText(responseText); // 将中英混合文本拆分
+      setTypedResponse(""); // 清空響應
+      const words = splitText(responseText); // 將中英混合文本拆分
       responseTimeouts = words.map((word, index) => {
-        const delay = index * 100; // 每个字符 0.1 秒延迟
+        const delay = index * 100; // 每個字符 0.1 秒延遲
         return setTimeout(() => {
           setTypedResponse((prev) => prev + word);
         }, delay);
       });
+    } else {
+      setTypedResponse(""); // 確保重置為空字符串
     }
 
     return () => {
-      responseTimeouts.forEach(clearTimeout); // 清理超时
+      responseTimeouts.forEach(clearTimeout); // 清理超時
     };
-  }, [responseText]); // 每次响应文本变化时重新运行
+  }, [responseText]); // 每次 responseText 變化時重新運行
 
   return (
     <div className="w-[60vw] mx-auto mb-2">
-      <div
-        className="w-full text-white text-sm p-2 overflow-auto"
-        style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}
-        dangerouslySetInnerHTML={{
-          __html: typedUserInput.replace(/^You:/, "<strong>You:</strong>"),
-        }}
-      ></div>
-      <div
-        className="w-full text-white text-sm p-2 overflow-auto mt-2"
-        style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}
-        dangerouslySetInnerHTML={{
-          __html: typedResponse.replace(/^Friska:/, "<strong>Friska:</strong>"),
-        }}
-      ></div>
+      <div className="w-full text-white text-sm p-2 overflow-auto">
+        {typedUserInput && (
+          <>
+            <strong>You:</strong>
+            {typedUserInput.split("\n").map((line, index) => (
+              <React.Fragment key={index}>
+                {line}
+                <br />
+              </React.Fragment>
+            ))}
+          </>
+        )}
+      </div>
+      <div className="w-full text-white text-sm p-2 overflow-auto mt-2">
+        {typedResponse && (
+          <>
+            <strong>Friska:</strong>
+            {typedResponse.split("\n").map((line, index) => (
+              <React.Fragment key={index}>
+                {line}
+                <br />
+              </React.Fragment>
+            ))}
+          </>
+        )}
+      </div>
+
     </div>
   );
 }
+
 
 
 function SimpleVoiceAssistant({
