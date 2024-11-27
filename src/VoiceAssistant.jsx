@@ -14,7 +14,8 @@ import { motion, AnimatePresence } from "framer-motion";
 
 // hook for getting audio track
 import { useLocalParticipant } from "@livekit/components-react";
-
+import { CircularProgressbar } from 'react-circular-progressbar'; // 使用 react-circular-progressbar 库
+import "react-circular-progressbar/dist/styles.css";
 
 export default function VoiceAssistantApp() {
   const [connectionDetails, setConnectionDetails] = useState(null);
@@ -271,7 +272,7 @@ function SimpleVoiceAssistant({
   const [isPressed, setIsPressed] = useState(false);
   const { microphoneTrack } = useLocalParticipant();
   const [hasMuteOnConnected, setHasMuteOnConnected] = useState(false); // 确保静音操作只执行一次
-  
+  const [progress, setProgress] = useState(0); // 环状进度条的进度
 
   
 
@@ -302,6 +303,20 @@ function SimpleVoiceAssistant({
       setHasMuteOnConnected(false); // 重置标记
     }
   }, [agentState]);
+
+  // Update progress for circular slider when button is pressed
+  useEffect(() => {
+    let interval;
+    if (isPressed) {
+      interval = setInterval(() => {
+        setProgress((prev) => (prev < 100 ? prev + 1 : 100));
+      }, 80); // 每50ms增加1%
+    } else {
+      setProgress(0); // 重置进度条
+    }
+    return () => clearInterval(interval); // 清除计时器
+  }, [isPressed]);
+  
 
 
   const handleHoldStart = async (event) => {
@@ -344,11 +359,52 @@ function SimpleVoiceAssistant({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 1 }} // 控制淡出动画的时长
               >
-                <div className="flex flex-col items-center space-y-4">
+
+              <div className="relative flex flex-col items-center space-y-4">
+                {/* Hold Button 和环的共同父容器 */}
+                <div
+                  className="relative"
+                  style={{
+                    width: "240px", // 父容器宽度（需大于按钮）
+                    height: "240px", // 父容器高度（需大于按钮）
+                  }}
+                >
+                  {/* 环状 UI */}
+                  {isPressed && (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{
+                        zIndex: 0,
+                      }}
+                    >
+                      <CircularProgressbar
+                        value={progress}
+                        styles={{
+                          path: {
+                            stroke: "rgba(255, 0, 0, 0.8)", // 红色环
+                            strokeWidth: 3, // 环的粗细
+                            strokeLinecap: "round",
+                            transition: "stroke-dashoffset 0.5s ease 0s",
+                          },
+                          trail: {
+                            stroke: "rgba(255, 0, 0, 0.0)", // 环的背景轨迹
+                            strokeWidth: 3,
+                          },
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Hold Button */}
                   <button
-                    className={`w-32 h-32 ${
-                      isPressed ? "bg-red-500" : "bg-green-500"
-                    } text-white rounded-full shadow-md flex items-center justify-center`}
+                    className={`absolute w-48 h-48 ${
+                      isPressed ? "bg-red-500 transform scale-95" : "bg-green-500"
+                    } text-white rounded-full shadow-md flex items-center justify-center transition-transform`}
+                    style={{
+                      top: "50%",
+                      left: "50%",
+                      transform: "translate(-50%, -50%)", // 保证按钮和环都居中
+                    }}
                     onMouseDown={handleHoldStart}
                     onMouseUp={handleHoldEnd}
                     onTouchStart={handleHoldStart}
@@ -357,15 +413,20 @@ function SimpleVoiceAssistant({
                   >
                     <MicrophoneIcon className="w-8 h-8" />
                   </button>
-                  <LanguageButtons
-                    isDisabled={isButtonDisabled}
-                    show={!showVisualizer}
-                  />
                 </div>
+
+                {/* 语言选择按钮 */}
+                <LanguageButtons isDisabled={isButtonDisabled} show={!showVisualizer} />
+              </div>
+
+
+
+
+
               </motion.div>
             )}
           </AnimatePresence>
-  
+
           {/* 显示 BarVisualizer */}
           {showVisualizer && (
             <BarVisualizer
