@@ -16,4 +16,12 @@ contextBridge.exposeInMainWorld("osc", {
   onUpdateUserInputText: (callback) => {
     ipcRenderer.on("update-user-input-text", (_, data) => callback(data));
   },
+  // 新增事件侦听器
+  onUserStop: (callback) => {
+    ipcRenderer.on("userstop", (_, data) => callback(data));
+  },
+  onAgentStop: (callback) => {
+    ipcRenderer.on("agentstop", (_, data) => callback(data));
+  },
+  
 });

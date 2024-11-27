@@ -40,6 +40,22 @@ function setupOSCServer() {
         mainWindow.webContents.send("update-user-input-text", input);
       }
     }
+
+    // 监听 "/userstop" 消息
+    if (address === "/userstop") {
+      console.log("OSC Message: /userstop received");
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send("userstop");
+      }
+    }
+
+    // 监听 "/agentstop" 消息
+    if (address === "/agentstop") {
+      console.log("OSC Message: /agentstop received");
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send("agentstop");
+      }
+    }
     
   });
 }

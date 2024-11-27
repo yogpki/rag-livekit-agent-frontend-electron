@@ -56,15 +56,15 @@ export default function VoiceAssistantApp() {
     );
   };
 
-  useEffect(() => {
-    console.log("Agent state updated:", agentState); // Debug info for agentState changes
-    // 如果在 listening 状态，启用按钮并隐藏 BarVisualizer
-    if (agentState === "listening") {
-      setShowVisualizer(false);
-      setIsButtonDisabled(false);
-    }
+  // useEffect(() => {
+  //   console.log("Agent state updated:", agentState); // Debug info for agentState changes
+  //   // 如果在 listening 状态，启用按钮并隐藏 BarVisualizer
+  //   if (agentState === "listening") {
+  //     setShowVisualizer(false);
+  //     setIsButtonDisabled(false);
+  //   }
 
-  }, [agentState]);
+  // }, [agentState]);
 
   
 
@@ -76,14 +76,30 @@ export default function VoiceAssistantApp() {
       setResponseText(""); // 清空响应
 
       // 收到 "/input" 时，显示 BarVisualizer 并禁用按钮
-      setShowVisualizer(true);
-      setIsButtonDisabled(true);
+      //setShowVisualizer(true);
+      //setIsButtonDisabled(true);
     });
 
     // 收到 "/response" 消息时处理逻辑
     window.osc.onUpdateResponseText((response) => {
       console.log("OSC Response received:", response);
       setResponseText("\n" + response); // 设置响应，并触发逐字显示逻辑
+    });
+  }, []);
+
+  useEffect(() => {
+    // 收到 "/userstop" 消息时，显示 BarVisualizer
+    window.osc.onUserStop(() => {
+      console.log("OSC userstop received!!");
+      setShowVisualizer(true);
+       setIsButtonDisabled(true);
+    });
+  
+    // 收到 "/agentstop" 消息时，隐藏 BarVisualizer
+    window.osc.onAgentStop(() => {
+      console.log("OSC agentstop received!!");
+       setShowVisualizer(false);
+       setIsButtonDisabled(false);
     });
   }, []);
   
@@ -108,6 +124,7 @@ export default function VoiceAssistantApp() {
         <ResponseAndInputBox
           responseText={responseText}
           userInputText={userInputText}
+          agentState={agentState} 
         />
         </div>
         <div className="h-full flex justify-center items-center">
@@ -134,57 +151,81 @@ export default function VoiceAssistantApp() {
 
 
 // ResponseAndInputBox 组件
-function ResponseAndInputBox({ responseText, userInputText }) {
-  const [typedUserInput, setTypedUserInput] = useState(""); // 動態顯示用戶輸入
-  const [typedResponse, setTypedResponse] = useState(""); // 動態顯示響應
+function ResponseAndInputBox({ responseText, userInputText, agentState }) {
+  const [typedUserInput, setTypedUserInput] = useState(""); // 动态显示用户输入
+  const [typedResponse, setTypedResponse] = useState(""); // 动态显示响应
+  const [hasClearedOnConnected, setHasClearedOnConnected] = useState(false); // 确保清空操作只执行一次
 
   // Helper function to split中英混合的文本
   const splitText = (text) => {
-    // 使用正則表達式將中英文字符分開
+    // 使用正则表达式将中英文字符分开
     return text.match(/[\u4e00-\u9fa5]|[^\u4e00-\u9fa5\s]+|\s+/g) || [];
   };
 
   useEffect(() => {
     let userInputTimeouts = [];
-
     if (userInputText) {
-      setTypedUserInput(""); // 清空用戶輸入
-      const words = splitText(userInputText); // 將中英混合文本拆分
+      setTypedUserInput(""); // 清空用户输入
+      const words = splitText(userInputText); // 将中英混合文本拆分
       userInputTimeouts = words.map((word, index) => {
-        const delay = index * 100; // 每個字符 0.1 秒延遲
+        const delay = index * 100; // 每个字符 0.1 秒延迟
         return setTimeout(() => {
           setTypedUserInput((prev) => prev + word);
         }, delay);
       });
-    } else {
-      setTypedUserInput(""); // 確保重置為空字符串
     }
 
     return () => {
-      userInputTimeouts.forEach(clearTimeout); // 清理超時
+      userInputTimeouts.forEach(clearTimeout); // 清理超时
     };
-  }, [userInputText]); // 每次 userInputText 變化時重新運行
+  }, [userInputText]);
 
   useEffect(() => {
     let responseTimeouts = [];
-
+    setTypedResponse(""); 
     if (responseText) {
-      setTypedResponse(""); // 清空響應
-      const words = splitText(responseText); // 將中英混合文本拆分
+      setTypedResponse(""); // 清空响应
+      const words = splitText(responseText); // 将中英混合文本拆分
       responseTimeouts = words.map((word, index) => {
-        const delay = index * 100; // 每個字符 0.1 秒延遲
+        const delay = index * 100; // 每个字符 0.1 秒延迟
         return setTimeout(() => {
           setTypedResponse((prev) => prev + word);
         }, delay);
       });
-    } else {
-      setTypedResponse(""); // 確保重置為空字符串
     }
 
     return () => {
-      responseTimeouts.forEach(clearTimeout); // 清理超時
+      responseTimeouts.forEach(clearTimeout); // 清理超时
     };
-  }, [responseText]); // 每次 responseText 變化時重新運行
+  }, [responseText]);
+
+  // 在 agentState 为 connecting 时，显示特定文本
+  useEffect(() => {
+    if (agentState === "connecting") {
+      setTypedUserInput("\nConnecting...");
+      setTypedResponse(""); // 清空响应
+    }
+  }, [agentState]);
+
+  // 在 agentState 为 connected 时，清空内容，只执行一次
+  useEffect(() => {
+    if (agentState != "disconnected" && agentState != "connecting" && !hasClearedOnConnected) {
+      setTypedUserInput("");
+      setTypedResponse("");
+      setHasClearedOnConnected(true); // 标记已清空
+    }
+  }, [agentState, hasClearedOnConnected]);
+
+  // 在 agentState 为 disconnected 时，重置 hasClearedOnConnected
+  useEffect(() => {
+    if (agentState === "disconnected") {
+      setHasClearedOnConnected(false);
+    }
+  }, [agentState]);
+
+  if (agentState === "disconnected") {
+    return null;
+  }
 
   return (
     <div className="w-[60vw] h-full flex flex-col justify-start mt-10">
@@ -214,10 +255,10 @@ function ResponseAndInputBox({ responseText, userInputText }) {
           </>
         )}
       </div>
-
     </div>
   );
 }
+
 
 
 function SimpleVoiceAssistant({
@@ -229,11 +270,39 @@ function SimpleVoiceAssistant({
   const { state, audioTrack } = useVoiceAssistant();
   const [isPressed, setIsPressed] = useState(false);
   const { microphoneTrack } = useLocalParticipant();
+  const [hasMuteOnConnected, setHasMuteOnConnected] = useState(false); // 确保静音操作只执行一次
+  
+
+  
 
   useEffect(() => {
     console.log("VoiceAssistant state updated:", state);
     onStateChange(state);
   }, [state, onStateChange]);
+
+  // Handle mute logic when agentState changes
+  useEffect(() => {
+    if (
+      agentState !== "disconnected" &&
+      agentState !== "connecting" &&
+      !hasMuteOnConnected
+    ) {
+      console.log("Muting microphone as agentState is connected");
+      if (microphoneTrack) {
+        microphoneTrack.mute(); // 静音麦克风
+      }
+      setHasMuteOnConnected(true); // 标记已静音
+    }
+  }, [agentState, hasMuteOnConnected, microphoneTrack]);
+
+  // Reset hasMuteOnConnected when disconnected
+  useEffect(() => {
+    if (agentState === "disconnected") {
+      console.log("Resetting hasMuteOnConnected as agentState is disconnected");
+      setHasMuteOnConnected(false); // 重置标记
+    }
+  }, [agentState]);
+
 
   const handleHoldStart = async (event) => {
     event.preventDefault();
@@ -263,50 +332,56 @@ function SimpleVoiceAssistant({
 
   return (
     <div className="relative w-full h-full flex flex-col justify-center items-center">
-      <AnimatePresence>
-        {!showVisualizer && agentState === "listening" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <button
-              className={`w-32 h-32 ${
-                isPressed ? "bg-red-500" : "bg-green-500"
-              } text-white rounded-full shadow-md flex items-center justify-center`}
-              onMouseDown={handleHoldStart}
-              onMouseUp={handleHoldEnd}
-              onTouchStart={handleHoldStart}
-              onTouchEnd={handleHoldEnd}
-              disabled={isButtonDisabled}
-            >
-              <MicrophoneIcon className="w-8 h-8" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {showVisualizer && (
-        <BarVisualizer
-          state={state}
-          barCount={5}
-          trackRef={audioTrack}
-          className="agent-visualizer"
-          options={{ minHeight: 24 }}
-        />
+      {agentState !== "disconnected" && agentState !== "connecting" && (
+        <>
+          {/* 按钮部分：HoldButton 和 LanguageButtons */}
+          <AnimatePresence>
+            {!showVisualizer && (
+              <motion.div
+                key="buttons" // 为按钮部分设置唯一键
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1 }} // 控制淡出动画的时长
+              >
+                <div className="flex flex-col items-center space-y-4">
+                  <button
+                    className={`w-32 h-32 ${
+                      isPressed ? "bg-red-500" : "bg-green-500"
+                    } text-white rounded-full shadow-md flex items-center justify-center`}
+                    onMouseDown={handleHoldStart}
+                    onMouseUp={handleHoldEnd}
+                    onTouchStart={handleHoldStart}
+                    onTouchEnd={handleHoldEnd}
+                    disabled={isButtonDisabled}
+                  >
+                    <MicrophoneIcon className="w-8 h-8" />
+                  </button>
+                  <LanguageButtons
+                    isDisabled={isButtonDisabled}
+                    show={!showVisualizer}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+  
+          {/* 显示 BarVisualizer */}
+          {showVisualizer && (
+            <BarVisualizer
+              state={state}
+              barCount={5}
+              trackRef={audioTrack}
+              className="agent-visualizer"
+              options={{ minHeight: 24 }}
+            />
+          )}
+        </>
       )}
-
-      {/* Pass `isButtonDisabled` to LanguageButtons */}
-      <LanguageButtons 
-        agentState={agentState} 
-        isDisabled={agentState !== "listening"} 
-        show={agentState === "listening"} 
-      />
-
-
     </div>
   );
+  
+  
 }
 
 
@@ -446,7 +521,7 @@ console.log("Mandarin Disabled:", isButtonDisabled("Mandarin"));
             }}
             disabled={isButtonDisabled("Cantonese")} // 判斷是否禁用
           >
-            Cantonese
+            粵
           </button>
 
           {/* English Button */}
@@ -464,7 +539,7 @@ console.log("Mandarin Disabled:", isButtonDisabled("Mandarin"));
             }}
             disabled={isButtonDisabled("English")} // 判斷是否禁用
           >
-            English
+            Eng
           </button>
 
           {/* Mandarin Button */}
@@ -482,7 +557,7 @@ console.log("Mandarin Disabled:", isButtonDisabled("Mandarin"));
             }}
             disabled={isButtonDisabled("Mandarin")} // 判斷是否禁用
           >
-            Mandarin
+            中
           </button>
         </motion.div>
       )}
