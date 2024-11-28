@@ -118,7 +118,7 @@ export default function VoiceAssistantApp() {
         video={false}
         onDisconnected={handleDisconnected}
         onMediaDeviceFailure={onDeviceFailure}
-        className="grid grid-rows-[33.3%_33.3%_33.3%] h-screen justify-items-center content-center"
+        className="grid grid-rows-[33%_55%_12%] h-screen justify-items-center content-center"
       >
         {/* 使用 ResponseAndInputBox 组件 */}
         <div className="h-full flex justify-center align-self-start">
@@ -136,7 +136,7 @@ export default function VoiceAssistantApp() {
           isButtonDisabled={isButtonDisabled} // 传递 isButtonDisabled 状态
         />
       </div>
-      <div className="h-1/3 flex justify-center items-center">
+      <div className="h-full flex justify-center items-center">
         <ControlBar
           onConnectButtonClicked={onConnectButtonClicked}
           agentState={agentState}
@@ -273,6 +273,7 @@ function SimpleVoiceAssistant({
   const { microphoneTrack } = useLocalParticipant();
   const [hasMuteOnConnected, setHasMuteOnConnected] = useState(false); // 确保静音操作只执行一次
   const [progress, setProgress] = useState(0); // 环状进度条的进度
+  const [temporaryDisabled, setTemporaryDisabled] = useState(false); // 临时禁用状态
 
   
 
@@ -292,6 +293,19 @@ function SimpleVoiceAssistant({
       if (microphoneTrack) {
         microphoneTrack.mute(); // 静音麦克风
       }
+
+      // 发送 OSC 消息到 /can
+      const sendOSCMessage = async () => {
+        try {
+          await window.osc.send("/can", 1);
+          console.log("OSC message sent to /can with value 1");
+        } catch (error) {
+          console.error("Failed to send OSC message to /can:", error);
+        }
+      };
+      
+      sendOSCMessage(); // 调用发送函数
+
       setHasMuteOnConnected(true); // 标记已静音
     }
   }, [agentState, hasMuteOnConnected, microphoneTrack]);
@@ -310,7 +324,7 @@ function SimpleVoiceAssistant({
     if (isPressed) {
       interval = setInterval(() => {
         setProgress((prev) => (prev < 100 ? prev + 1 : 100));
-      }, 80); // 每50ms增加1%
+      }, 50); // 每50ms增加1%
     } else {
       setProgress(0); // 重置进度条
     }
@@ -321,6 +335,13 @@ function SimpleVoiceAssistant({
 
   const handleHoldStart = async (event) => {
     event.preventDefault();
+
+    // 如果处于临时禁用状态，阻止按钮触发
+    if (temporaryDisabled) {
+      console.log("Button is temporarily disabled. Action blocked.");
+      return;
+    }
+
     setIsPressed(true);
     if (microphoneTrack) {
       microphoneTrack.unmute();
@@ -334,6 +355,14 @@ function SimpleVoiceAssistant({
 
   const handleHoldEnd = async (event) => {
     event.preventDefault();
+
+    // 启动临时禁用状态
+    setTemporaryDisabled(true);
+    setTimeout(() => {
+      setTemporaryDisabled(false); // 2秒后解除禁用
+      console.log("Temporary disable lifted.");
+    }, 2000);
+
     setIsPressed(false);
     if (microphoneTrack) {
       microphoneTrack.mute();
@@ -360,7 +389,7 @@ function SimpleVoiceAssistant({
                 transition={{ duration: 1 }} // 控制淡出动画的时长
               >
 
-              <div className="relative flex flex-col items-center space-y-4">
+              <div className="relative flex flex-col items-center space-y-8">
                 {/* Hold Button 和环的共同父容器 */}
                 <div
                   className="relative"
@@ -398,7 +427,7 @@ function SimpleVoiceAssistant({
                   {/* Hold Button */}
                   <button
                     className={`absolute w-48 h-48 ${
-                      isPressed ? "bg-red-500 transform scale-95" : "bg-green-500"
+                      isPressed ? "bg-red-500 transform scale-95" : "bg-blue-500"
                     } text-white rounded-full shadow-md flex items-center justify-center transition-transform`}
                     style={{
                       top: "50%",
@@ -407,6 +436,7 @@ function SimpleVoiceAssistant({
                     }}
                     onMouseDown={handleHoldStart}
                     onMouseUp={handleHoldEnd}
+                    onMouseLeave={handleHoldEnd}
                     onTouchStart={handleHoldStart}
                     onTouchEnd={handleHoldEnd}
                     disabled={isButtonDisabled}
@@ -618,7 +648,7 @@ console.log("Mandarin Disabled:", isButtonDisabled("Mandarin"));
             }}
             disabled={isButtonDisabled("Mandarin")} // 判斷是否禁用
           >
-            中
+            國
           </button>
         </motion.div>
       )}
