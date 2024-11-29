@@ -118,16 +118,17 @@ export default function VoiceAssistantApp() {
         video={false}
         onDisconnected={handleDisconnected}
         onMediaDeviceFailure={onDeviceFailure}
-        className="grid grid-rows-[33%_55%_12%] h-screen justify-items-center content-center"
+        className="grid grid-rows-[12%_55%_33%] h-screen justify-items-center content-center"
       >
-        {/* 使用 ResponseAndInputBox 组件 */}
-        <div className="h-full flex justify-center align-self-start">
-        <ResponseAndInputBox
-          responseText={responseText}
-          userInputText={userInputText}
-          agentState={agentState} 
+
+        <div className="h-full flex justify-center items-center">
+        <ControlBar
+          onConnectButtonClicked={onConnectButtonClicked}
+          agentState={agentState}
+          
         />
-        </div>
+      </div>
+        
         <div className="h-full flex justify-center items-center">
         <SimpleVoiceAssistant
           agentState={agentState}
@@ -136,13 +137,16 @@ export default function VoiceAssistantApp() {
           isButtonDisabled={isButtonDisabled} // 传递 isButtonDisabled 状态
         />
       </div>
-      <div className="h-full flex justify-center items-center">
-        <ControlBar
-          onConnectButtonClicked={onConnectButtonClicked}
-          agentState={agentState}
-          
+      
+
+      {/* 使用 ResponseAndInputBox 组件 */}
+      <div className="h-full flex justify-center align-self-start">
+        <ResponseAndInputBox
+          responseText={responseText}
+          userInputText={userInputText}
+          agentState={agentState} 
         />
-      </div>
+        </div>
 
         <RoomAudioRenderer />
       </LiveKitRoom>
@@ -229,7 +233,7 @@ function ResponseAndInputBox({ responseText, userInputText, agentState }) {
   }
 
   return (
-    <div className="w-[60vw] h-full flex flex-col justify-start mt-10">
+    <div className="w-[50vw] h-full flex flex-col justify-start mt-10">
       <div className="w-full text-white text-sm p-4 overflow-auto">
         {typedUserInput && (
           <>
@@ -507,7 +511,13 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
   };
 
   return (
-    <div className="relative h-full flex justify-center items-center">
+    <div className="relative h-full flex flex-col justify-center items-center">
+      {/* 添加顶部文本 */}
+      <div className="mb-4 mt-12 text-center text-white text-lg font-medium px-4">
+        Meet Friska, a sumatran orangutan from Suaq Forest.
+        <br />
+        Hold the button to ask her questions.
+      </div>
       <AnimatePresence>
         {agentState === "disconnected" && (
           <motion.button
@@ -520,7 +530,6 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
           >
             Start a conversation
           </motion.button>
-          
         )}
       </AnimatePresence>
       <AnimatePresence>
