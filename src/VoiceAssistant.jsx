@@ -233,7 +233,7 @@ function ResponseAndInputBox({ responseText, userInputText, agentState }) {
   }
 
   return (
-    <div className="w-[50vw] h-full flex flex-col justify-start mt-10">
+    <div className="w-[40vw] h-full flex flex-col justify-start mt-10">
       <div className="w-full text-white text-sm p-4 overflow-auto">
         {typedUserInput && (
           <>
