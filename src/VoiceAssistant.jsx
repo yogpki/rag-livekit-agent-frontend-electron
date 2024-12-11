@@ -29,14 +29,15 @@ export default function VoiceAssistantApp() {
   const [showVisualizer, setShowVisualizer] = useState(false); // 控制 BarVisualizer 显示
   const [isButtonDisabled, setIsButtonDisabled] = useState(false); // 控制 HoldButton 禁用状态
 
+
+   // 新增：將 selectedLanguage 提升到 VoiceAssistantApp
+   const [selectedLanguage, setSelectedLanguage] = useState("Cantonese");
+
+
   useEffect(() => {
     console.log("responseText updated:", responseText);
   }, [responseText]);
 
-  const handleLanguageChange = (language) => {
-    console.log("Language changed to:", language);
-    setSelectedLanguage(language); // 更新狀態
-  };
   
   
   // Fetch connection details from the main process
@@ -142,6 +143,8 @@ export default function VoiceAssistantApp() {
           onStateChange={setAgentState}
           showVisualizer={showVisualizer} // 传递 showVisualizer 状态
           isButtonDisabled={isButtonDisabled} // 传递 isButtonDisabled 状态
+          selectedLanguage={selectedLanguage} // 傳遞狀態
+          setSelectedLanguage={setSelectedLanguage} // 傳遞setter
         />
       </div>
       
@@ -278,6 +281,8 @@ function SimpleVoiceAssistant({
   agentState,
   showVisualizer,
   isButtonDisabled,
+  selectedLanguage, // 從父組件接收
+  setSelectedLanguage, // 從父組件接收
 }) {
   const { state, audioTrack } = useVoiceAssistant();
   const [isPressed, setIsPressed] = useState(false);
@@ -458,7 +463,12 @@ function SimpleVoiceAssistant({
                 </div>
 
                 {/* 语言选择按钮 */}
-                <LanguageButtons isDisabled={isButtonDisabled} show={!showVisualizer} />
+                <LanguageButtons
+                    isDisabled={isButtonDisabled}
+                    show={!showVisualizer}
+                    selectedLanguage={selectedLanguage} // 傳遞狀態
+                    setSelectedLanguage={setSelectedLanguage} // 傳遞setter
+                  />
               </div>
 
 
@@ -626,9 +636,11 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
 }
 
 
-function LanguageButtons({ agentState, isDisabled, show }) {
+function LanguageButtons({ agentState, isDisabled, show, selectedLanguage, setSelectedLanguage }) {
 
-  const [selectedLanguage, setSelectedLanguage] = useState("Cantonese"); // 默認選中 Cantonese
+  
+
+  //const [selectedLanguage, setSelectedLanguage] = useState("Cantonese"); // 默認選中 Cantonese
 
   const handleButtonClick = async (language, oscAddress) => {
     console.log(`handleButtonClick called for ${language}`); // 確保函數被調用
@@ -638,8 +650,7 @@ function LanguageButtons({ agentState, isDisabled, show }) {
     }
   
     console.log(`Switching to ${language} mode`);
-    setSelectedLanguage(language); // 更新選中的語言
-  
+    setSelectedLanguage(language); // 更新父組件狀態
     // 發送 OSC 消息
     try {
       await window.osc.send(oscAddress, 1); // 發送 OSC 消息
