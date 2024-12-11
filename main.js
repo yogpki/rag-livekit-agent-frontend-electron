@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, screen } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
 import { AccessToken } from "livekit-server-sdk";
@@ -71,9 +71,22 @@ function setupOSC() {
 app.on("ready", () => {
   process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 
+  const displays = screen.getAllDisplays(); // 获取所有显示器信息
+  const secondDisplay = displays[1]; // 获取第二个显示器（索引从 0 开始）
+
+  if (!secondDisplay) {
+    console.error("No second display detected. Defaulting to primary display.");
+  }
+
+  const targetBounds = secondDisplay ? secondDisplay.bounds : displays[0].bounds; // 如果没有第二个显示器，使用主显示器
+
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    x: targetBounds.x, // 窗口在目标显示器上的起始 X 坐标
+    y: targetBounds.y, // 窗口在目标显示器上的起始 Y 坐标
+    width: 1080,
+    height: 1920,
+    fullscreen: true, // 启用全屏
+    frame: false, // 移除窗口边框和标题栏
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -94,6 +107,8 @@ app.on("ready", () => {
 
   
 });
+
+
 
 // 处理渲染进程发来的 OSC 发送请求
 ipcMain.handle("send-osc", async (event, address, value) => {

@@ -17,6 +17,8 @@ import { useLocalParticipant } from "@livekit/components-react";
 import { CircularProgressbar } from 'react-circular-progressbar'; // 使用 react-circular-progressbar 库
 import "react-circular-progressbar/dist/styles.css";
 
+
+
 export default function VoiceAssistantApp() {
   const [connectionDetails, setConnectionDetails] = useState(null);
   const [agentState, setAgentState] = useState("disconnected");
@@ -31,6 +33,11 @@ export default function VoiceAssistantApp() {
     console.log("responseText updated:", responseText);
   }, [responseText]);
 
+  const handleLanguageChange = (language) => {
+    console.log("Language changed to:", language);
+    setSelectedLanguage(language); // 更新狀態
+  };
+  
   
   // Fetch connection details from the main process
   const onConnectButtonClicked = useCallback(async () => {
@@ -108,7 +115,7 @@ export default function VoiceAssistantApp() {
   return (
     <main
       data-lk-theme="default"
-      className="h-screen grid content-center bg-[var(--lk-bg)]"
+      className="h-screen grid content-center bg-[var(--lk-bg) overflow-hidden]"
     >
       <LiveKitRoom
         token={connectionDetails?.participantToken}
@@ -118,7 +125,7 @@ export default function VoiceAssistantApp() {
         video={false}
         onDisconnected={handleDisconnected}
         onMediaDeviceFailure={onDeviceFailure}
-        className="grid grid-rows-[12%_55%_33%] h-screen justify-items-center content-center"
+        className="grid grid-rows-[22%_40%_38%] h-screen justify-items-center content-center overflow-hidden"
       >
 
         <div className="h-full flex justify-center items-center">
@@ -233,8 +240,8 @@ function ResponseAndInputBox({ responseText, userInputText, agentState }) {
   }
 
   return (
-    <div className="w-[40vw] h-full flex flex-col justify-start mt-10">
-      <div className="w-full text-white text-sm p-4 overflow-auto">
+    <div className="w-[75vw] h-full flex flex-col justify-start mt-10 overflow-hidden">
+      <div className="w-full text-white text-base p-4 overflow-hidden">
         {typedUserInput && (
           <>
             <strong>You:</strong>
@@ -247,7 +254,7 @@ function ResponseAndInputBox({ responseText, userInputText, agentState }) {
           </>
         )}
       </div>
-      <div className="w-full text-white text-sm p-4 overflow-auto mt-2">
+      <div className="w-full text-white text-base p-4 overflow-hidden mt-2">
         {typedResponse && (
           <>
             <strong>Friska:</strong>
@@ -398,8 +405,9 @@ function SimpleVoiceAssistant({
                 <div
                   className="relative"
                   style={{
-                    width: "240px", // 父容器宽度（需大于按钮）
-                    height: "240px", // 父容器高度（需大于按钮）
+                    width: "480px", // 父容器宽度（需大于按钮）
+                    height: "480px", // 父容器高度（需大于按钮）
+                    overflow: "hidden",
                   }}
                 >
                   {/* 环状 UI */}
@@ -430,7 +438,7 @@ function SimpleVoiceAssistant({
 
                   {/* Hold Button */}
                   <button
-                    className={`absolute w-48 h-48 ${
+                    className={`absolute w-96 h-96 ${
                       isPressed ? "bg-red-500 transform scale-95" : "bg-blue-500"
                     } text-white rounded-full shadow-md flex items-center justify-center transition-transform`}
                     style={{
@@ -445,7 +453,7 @@ function SimpleVoiceAssistant({
                     onTouchEnd={handleHoldEnd}
                     disabled={isButtonDisabled}
                   >
-                    <MicrophoneIcon className="w-8 h-8" />
+                    <MicrophoneIcon className="w-16 h-16" />
                   </button>
                 </div>
 
@@ -483,6 +491,63 @@ function SimpleVoiceAssistant({
 
 
 function ControlBar({ onConnectButtonClicked, agentState }) {
+
+  const [showControlBar, setShowControlBar] = useState(true); // 控制 VoiceAssistantControlBar 的显示状态
+
+  const [topText, setTopText] = useState(
+    `與森林中的人 Friska 對話, 探索森林的故事
+  Come talk to Friska. to learn about the forest
+  
+  請按住按鈕說話, 放開按鈕結束
+  Press and hold to speak. Release to finish`
+  );
+
+  useEffect(() => {
+    // 當收到 /userstop 時，修改頂部文本
+    window.osc.onUserStop(() => {
+      console.log("OSC userstop received!!");
+      setTopText(`Friska 諗緊點答你… 請耐心等候
+  Friska is thinking how to answer you, please be patience`);
+    });
+  
+    // 當收到 /response 時，清空頂部文本
+    window.osc.onUpdateResponseText(() => {
+      console.log("OSC response received!!");
+      setTopText(""); // 清空頂部文本
+    });
+  
+    // 當收到 /agentstop 時，恢復初始文本
+    window.osc.onAgentStop(() => {
+      console.log("OSC agentstop received!!");
+      setTopText(`與森林中的人 Friska 對話, 探索森林的故事
+  Come talk to Friska. to learn about the forest
+  
+  請按住按鈕說話, 放開按鈕結束
+  Press and hold to speak. Release to finish`);
+    });
+  }, []);
+
+  // 键盘事件处理函数
+  const handleKeyPress = useCallback((event) => {
+    if (event.key === "b" || event.key === "B") {
+      console.log("b pressed");
+      setShowControlBar((prev) => !prev); // 切换显示/隐藏状态
+      
+    }
+    else if (event.key === "s" || event.key === "S") {
+      console.log("Key 'S' pressed. Triggering StartConversation.");
+      handleButtonClick(); // 调用启动对话逻辑
+    }
+  }, []);
+
+  // 添加和移除键盘事件监听器
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyPress);
+    return () => {
+      window.removeEventListener("keydown", handleKeyPress);
+    };
+  }, [handleKeyPress]);
+
   const handleButtonClick = async () => {
     console.log("Connect button in ControlBar clicked");
     await onConnectButtonClicked();
@@ -497,6 +562,9 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
       // 新增：發送 /can，值為 1
       await window.osc.send("/can", 1);
       console.log("OSC message sent to /can");
+      // 隐藏 Control Bar
+      setShowControlBar(false);
+
     } catch (error) {
       console.error("Failed to send OSC message:", error);
     }
@@ -504,6 +572,9 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
     try {
       await window.osc.send("/release", 1);
       console.log("OSC message sent to /release with value 1");
+       // 再次确保隐藏 Control Bar
+       setShowControlBar(false);
+
     } catch (error) {
       console.error("Failed to send OSC message to /release:", error);
     }
@@ -513,10 +584,13 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
   return (
     <div className="relative h-full flex flex-col justify-center items-center">
       {/* 添加顶部文本 */}
-      <div className="mb-4 mt-12 text-center text-white text-lg font-medium px-4">
-        Meet Friska, a sumatran orangutan from Suaq Forest.
-        <br />
-        Hold the button to ask her questions.
+      <div className="mb-4 mt-22 text-center text-white text-xl font-medium px-4">
+      {topText.split("\n").map((line, index) => (
+          <React.Fragment key={index}>
+            {line}
+            <br />
+          </React.Fragment>
+        ))}
       </div>
       <AnimatePresence>
         {agentState === "disconnected" && (
@@ -532,8 +606,9 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
           </motion.button>
         )}
       </AnimatePresence>
+      {/* 条件渲染 VoiceAssistantControlBar */}
       <AnimatePresence>
-        {agentState !== "disconnected" && agentState !== "connecting" && (
+        {showControlBar && agentState !== "disconnected" && agentState !== "connecting" && (
           <motion.div
             initial={{ opacity: 0, top: "10px" }}
             animate={{ opacity: 1, top: 0 }}
@@ -604,16 +679,16 @@ console.log("Mandarin Disabled:", isButtonDisabled("Mandarin"));
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
-          className="flex justify-center items-center mt-10 space-x-4"
+          className="flex justify-center items-center mt-10 space-x-6 overflow-hidden"
         >
           {/* Cantonese Button */}
           <button
-            className={`uppercase px-4 py-2 rounded-md text-xs ${getButtonStyles(
+            className={`uppercase px-6 py-3 rounded-md text-base ${getButtonStyles(
               "Cantonese"
             )}`}
             style={{
-              fontSize: "0.75rem", // 字體大小為 0.75rem
-              lineHeight: "1.2", // 行高
+              fontSize: "1.0rem", // 字體大小為 0.75rem
+              lineHeight: "1.25", // 行高
             }}
             onClick={() => {
               console.log("Cantonese button clicked"); // 調試輸出
@@ -626,12 +701,12 @@ console.log("Mandarin Disabled:", isButtonDisabled("Mandarin"));
 
           {/* English Button */}
           <button
-            className={`uppercase px-4 py-2 rounded-md text-xs ${getButtonStyles(
+            className={`uppercase px-6 py-3 rounded-md text-base ${getButtonStyles(
               "English"
             )}`}
             style={{
-              fontSize: "0.75rem",
-              lineHeight: "1.2",
+              fontSize: "1.0rem",
+              lineHeight: "1.25",
             }}
             onClick={() => {
               console.log("English button clicked"); // 調試輸出
@@ -644,12 +719,12 @@ console.log("Mandarin Disabled:", isButtonDisabled("Mandarin"));
 
           {/* Mandarin Button */}
           <button
-            className={`uppercase px-4 py-2 rounded-md text-xs ${getButtonStyles(
+            className={`uppercase px-6 py-3 rounded-md text-base ${getButtonStyles(
               "Mandarin"
             )}`}
             style={{
-              fontSize: "0.75rem",
-              lineHeight: "1.2",
+              fontSize: "1.0rem",
+              lineHeight: "1.25",
             }}
             onClick={() => {
               console.log("Mandarin button clicked"); // 調試輸出
