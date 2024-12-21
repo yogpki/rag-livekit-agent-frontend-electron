@@ -517,7 +517,7 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
     window.osc.onUserStop(() => {
       console.log("OSC userstop received!!");
       setTopText(`Friska 諗緊點答你… 請耐心等候
-  Friska is thinking how to answer you, please be patience`);
+  Friska is thinking how to answer you, please be patient`);
     });
   
     // 當收到 /response 時，清空頂部文本
