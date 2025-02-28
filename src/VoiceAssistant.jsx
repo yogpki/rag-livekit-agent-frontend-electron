@@ -31,7 +31,7 @@ export default function VoiceAssistantApp() {
 
 
    // 新增：將 selectedLanguage 提升到 VoiceAssistantApp
-   const [selectedLanguage, setSelectedLanguage] = useState("Cantonese");
+   const [selectedLanguage, setSelectedLanguage] = useState("English");
 
 
   useEffect(() => {
@@ -461,14 +461,9 @@ function SimpleVoiceAssistant({
                     <MicrophoneIcon className="w-16 h-16" />
                   </button>
                 </div>
+                
 
-                {/* 语言选择按钮 */}
-                <LanguageButtons
-                    isDisabled={isButtonDisabled}
-                    show={!showVisualizer}
-                    selectedLanguage={selectedLanguage} // 傳遞狀態
-                    setSelectedLanguage={setSelectedLanguage} // 傳遞setter
-                  />
+               
               </div>
 
 
@@ -507,7 +502,10 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
   const [topText, setTopText] = useState(
     `與森林中的人 Friska 對話, 探索森林的故事
   Come talk to Friska. to learn about the forest
-  
+
+  Friska只聼得明英文
+  Friska only understands English
+
   請按住按鈕說話, 放開按鈕結束
   Press and hold to speak. Release to finish`
   );
@@ -531,7 +529,10 @@ function ControlBar({ onConnectButtonClicked, agentState }) {
       console.log("OSC agentstop received!!");
       setTopText(`與森林中的人 Friska 對話, 探索森林的故事
   Come talk to Friska. to learn about the forest
-  
+
+  Friska只聼得明英文
+  Friska only understands English
+
   請按住按鈕說話, 放開按鈕結束
   Press and hold to speak. Release to finish`);
     });
@@ -692,8 +693,9 @@ console.log("Mandarin Disabled:", isButtonDisabled("Mandarin"));
           transition={{ duration: 0.5 }}
           className="flex justify-center items-center mt-10 space-x-6 overflow-hidden"
         >
-          {/* Cantonese Button */}
-          <button
+
+           {/* Cantonese Button */}
+           <button
             className={`uppercase px-6 py-3 rounded-md text-base ${getButtonStyles(
               "Cantonese"
             )}`}
